@@ -1,5 +1,7 @@
-import { createPimlicoClient } from "permissionless/clients/pimlico";
+async function compute() {
+  return 10n ** 18n;
+}
 
 export default function Home() {
-  return <div>permissionless: {typeof createPimlicoClient}</div>;
+  return <div>{typeof compute}</div>;
 }
