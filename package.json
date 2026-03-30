@@ -10,7 +10,6 @@
     "permissionless": "0.3.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "styled-components": "^6.3.12",
     "viem": "^2.0.0"
   },
   "devDependencies": {

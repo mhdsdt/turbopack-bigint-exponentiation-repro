@@ -1,26 +1,18 @@
 import { createPimlicoClient } from "permissionless/clients/pimlico";
 
-// A generator function in user code triggers SWC's ES2015 generator transform
-// on the entire chunk, including node_modules. The `permissionless` package
-// contains `10n ** 18n` (BigInt exponentiation), and the generator transform
-// panics because ** is right-associative and unhandled.
+// Minimal reproduction: just importing permissionless is enough.
+// The permissionless package has an async function + the ** operator
+// in the same file (estimateErc20PaymasterCost.js):
 //
-// Panic: swc_ecma_compat_es2015/src/generator.rs:507
-// "not yet implemented: right-associative binary expression"
-function* counter() {
-  let i = 0;
-  while (true) {
-    yield i++;
-  }
-}
-
-const gen = counter();
+//   export const estimateErc20PaymasterCost = async (client, args) => {
+//     ...
+//     const costInUsd = (maxCostInWei * exchangeRateNativeToUsd) / 10n ** 18n;
+//     ...
+//   }
+//
+// Turbopack's browserslist-based targeting downlevels async -> generator,
+// then the generator transform panics on ** (right-associative, unhandled).
 
 export default function Home() {
-  return (
-    <div>
-      <p>permissionless: {typeof createPimlicoClient}</p>
-      <p>counter: {gen.next().value as number}</p>
-    </div>
-  );
+  return <div>permissionless: {typeof createPimlicoClient}</div>;
 }
