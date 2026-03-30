@@ -1,35 +1,23 @@
-# Turbopack: BigInt exponentiation operator causes panic in generator transform
+# Turbopack: `browserslist-rs` data mismatch causes panic on `**` operator
 
-Minimal reproduction for a Turbopack bug where the `**` (exponentiation) operator in `node_modules` causes a Rust panic when `compiler.styledComponents` is enabled.
+Minimal reproduction for a Turbopack bug where stale browser data in the Rust `browserslist-rs` crate causes all SWC compat transforms to be enabled unnecessarily, triggering a panic in the ES2015 generator transform on the `**` (exponentiation) operator.
 
 ## Reproduction
 
 ```bash
 npm install
-npm run dev    # starts with --turbopack
-# Visit http://localhost:3000 -> 500 error
+npm run dev
+# Visit http://localhost:3000 -> 500 error with panic
 ```
 
-## What happens
+## Root cause
 
-Turbopack panics at `swc_ecma_compat_es2015/src/generator.rs:507`:
-
-```
-not yet implemented: right-associative binary expression
-```
-
-The `**` operator is the only right-associative binary operator in JavaScript. SWC's ES2015 generator transform has a `todo!()` for it instead of an implementation.
-
-## Trigger conditions
-
-1. `compiler: { styledComponents: true }` in `next.config.ts`
-2. `styled-components` installed as a dependency
-3. Any `node_modules` code using the `**` operator (here: `permissionless` uses `10n ** 18n`)
+1. Next.js resolves the browserslist query on the JS side using up-to-date `caniuse-lite` data (knows Chrome 146, Firefox 148, etc.)
+2. The resolved browser strings are sent to Turbopack, which re-resolves them using the Rust `browserslist-rs` crate (v0.19.0, bundled data only knows up to ~Chrome 141)
+3. Unknown versions are silently dropped (`ignore_unknown_versions: true`), returning an empty distribution list
+4. `is_any_target()` returns `true` (all versions are `None`), enabling every SWC compat transform
+5. The ES2015 generator transform encounters `10n ** 18n` in `permissionless` and panics at `todo!("right-associative binary expression")`
 
 ## Workaround
 
-Use `--webpack` instead of `--turbopack`:
-
-```bash
-npm run dev:webpack
-```
+Use webpack: `npm run dev:webpack`
