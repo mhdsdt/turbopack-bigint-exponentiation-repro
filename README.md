@@ -1,22 +1,24 @@
-# Turbopack: stale `browserslist-rs` data causes unnecessary downleveling and panic on `**` operator
+# Turbopack: stale `browserslist-rs` data causes all SWC compat transforms to be enabled, panicking on `**` operator
 
-Minimal reproduction for a Turbopack bug where stale browser data in the Rust `browserslist-rs` crate causes all SWC compat transforms to be enabled unnecessarily, triggering a panic in the ES2015 generator transform on the `**` (exponentiation) operator.
+Minimal reproduction for [vercel/next.js#92091](https://github.com/vercel/next.js/issues/92091).
+
+Stale browser data in Turbopack's Rust `browserslist-rs` crate causes all SWC compat transforms to be enabled unnecessarily, triggering a panic in the ES2015 generator transform on the `**` (exponentiation) operator.
 
 ## Reproduction
 
 ```bash
-npm install
+npm install --force
 npm run dev
 # Visit http://localhost:3000 -> 500 error with panic
 ```
 
 ## Root cause
 
-1. Next.js resolves the browserslist query on the JS side using up-to-date `caniuse-lite` data (knows Chrome 146, Firefox 148, etc.)
-2. The resolved browser strings are sent to Turbopack, which re-resolves them using the Rust `browserslist-rs` crate (v0.19.0, published July 2025, only knows up to ~Chrome 141)
+1. Next.js resolves the browserslist on the JS side using up-to-date `caniuse-lite` data (knows Chrome 146, Firefox 149, etc.)
+2. The resolved browser strings are sent to Turbopack, which re-resolves them using the Rust `browserslist-rs` crate (v0.19.0, only knows up to ~Chrome 141)
 3. Unknown versions are silently dropped (`ignore_unknown_versions: true`), returning an empty distribution list
 4. `is_any_target()` returns `true` (all versions are `None`), enabling every SWC compat transform
-5. The `async-to-generator` transform converts the async function to a generator
+5. `async-to-generator` converts the async function to a generator
 6. The ES2015 generator transform encounters `**` and panics at `todo!("right-associative binary expression")`
 
 ## Workaround
